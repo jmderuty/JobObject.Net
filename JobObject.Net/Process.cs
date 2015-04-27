@@ -6,11 +6,15 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TestTechno
+namespace Stormancer.JobManagement
 {
-    public class Process
+    /// <summary>
+    /// A factory that creates processes with the CREATE_BREAKAWAY_FROM_JOB set, that enables to assign the process to jobs even if the current process is itself running inside a job (That's the case when running the program in Visual Studio for instance) 
+    /// </summary>
+    public class ProcessFactory
     {
         private const int CREATE_BREAKAWAY_FROM_JOB = 0x01000000;
+        private const int CREATE_NO_WINDOW = 0x08000000;
 
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool CreateProcess(
@@ -68,40 +72,42 @@ namespace TestTechno
         }
 
 
-        public Process(string path,string args, string currentDirectory)
+        public static System.Diagnostics.Process CreateProcess(string path, string args, string currentDirectory)
         {
-            if(!File.Exists(path))
+            if (!File.Exists(path))
             {
                 throw new ArgumentException("File does not exist");
             }
-
-            _inf = new StartupInfo();
-            _inf.cb = (uint)Marshal.SizeOf(typeof(StartupInfo));
-            _proc = new ProcessInfo();
-            if(!CreateProcess(path, args, IntPtr.Zero, IntPtr.Zero, false, CREATE_BREAKAWAY_FROM_JOB,IntPtr.Zero,currentDirectory,ref _inf,out _proc))
+            ProcessInfo proc = new ProcessInfo();
+            try
             {
-                throw new InvalidOperationException("Couldn't create process");
+                var inf = new StartupInfo();
+
+                inf.cb = (uint)Marshal.SizeOf(typeof(StartupInfo));
+                var cmd = path;
+                if(!string.IsNullOrWhiteSpace(args))
+                {
+                    cmd += " " + args;
+                }
+                if (!CreateProcess(cmd, null, IntPtr.Zero, IntPtr.Zero, false, CREATE_BREAKAWAY_FROM_JOB | CREATE_NO_WINDOW, IntPtr.Zero, currentDirectory, ref inf, out proc))
+                {
+                    throw new InvalidOperationException("Couldn't create process");
+                }
+
+                return System.Diagnostics.Process.GetProcessById(proc.ProcessId);
             }
+            finally
+            {
+                if (proc.hProcess != IntPtr.Zero)
+                {
+                    Interop.CloseHandle(proc.hProcess);
+                }
+            }
+
+
         }
 
-        private ProcessInfo _proc;
-        private StartupInfo _inf;
 
-        public IntPtr Handle
-        {
-            get
-            {
-                return _proc.hProcess;
-            }
-        }
-
-        public int ProcessId
-        {
-            get
-            {
-                return _proc.ProcessId;
-            }
-        }
 
     }
 }
