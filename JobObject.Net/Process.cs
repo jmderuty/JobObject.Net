@@ -89,7 +89,7 @@ namespace Stormancer.JobManagement
                 {
                     cmd += " " + args;
                 }
-                if (!CreateProcess(cmd, null, IntPtr.Zero, IntPtr.Zero, false, CREATE_BREAKAWAY_FROM_JOB | CREATE_NO_WINDOW, IntPtr.Zero, currentDirectory, ref inf, out proc))
+                if (!CreateProcess(null, cmd, IntPtr.Zero, IntPtr.Zero, false, CREATE_BREAKAWAY_FROM_JOB | CREATE_NO_WINDOW, IntPtr.Zero, currentDirectory, ref inf, out proc))
                 {
                     throw new InvalidOperationException("Couldn't create process");
                 }
